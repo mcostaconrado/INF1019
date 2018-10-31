@@ -1,0 +1,1637 @@
+CONRADO MACHADO COSTA 1710234
+
+
+
+UTILIZAÇÃO DOS PROGRAMAS:
+
+É preciso compilar os programas (EX: gcc -o prog1 prog1.c), o interpretador(gcc -o interpretador interpretador.c) e o escalonador.
+Depois, é só executar o escalonador (./escalonador).
+
+
+COMUNICAÇÃO DOS PROCESSOS:
+
+
+	Meu trabalho está organizado da seguinte forma: O escalonador faz um fork para inicializar o interpretador. O interpretador, a cada programa lido de exec.txt, coloca as informações do programa numa variável de memória compartilhada e manda um sinal para o escalonador. Este, por sua vez, quando recebe o sinal, vai na memória compartilhada e captura o programa, inserindo-o numa fila. Além disso, cria um fork para cada um desses programas.
+
+	Para que interferir na execução desses programas, o escalonador manda sinais (SIGCONT OU SIGSTOP) para eles.
+
+
+ESTRUTURAS UTILIZADAS E TEMPOS UTILIZADOS:
+
+	Um processo é uma estrutura de dados com os seguintes campos:
+
+	typedef struct proc{	// ESTRUTURA DE UM PROCESSO
+		char nome[100];		
+		int pid;			
+		int prioridade;		
+		int ut_restante;	// quantos UT ainda restam
+		int ut_seguido;		// há quantas uts seguidas o processo está executando
+		int tempo_bloqueado;
+	} Processo;
+
+	Uma fila contem vários nós, cada nó tem os seguintes campos:
+
+	typedef struct no_lista{
+		Processo *p;
+		struct no_lista *prox;
+	}No;
+
+	Eles são interligados através do ponteiro prox;
+
+	Para implementar as filas, usei um vetor de filas. Esse vetor tem índice 0 para a fila de processos em espera de I/O e, os demais números, para as prioridades.
+
+	Para medir o tempo, utilizei uma variável para armazenar o clock, dividindo o número de voltas pelo número de clocks por segundo já definido pelo pc.
+
+CRÍTICAS AO TRABALHO
+
+	Na verdade, o mais difícil não foi o escalonamento em si, e sim fazer funcionar as filas, retiradas de nós, inserção, etc. Ainda mais com os cenários mudando de segundo em segundo. Os seg-faults aconteceram bastante.
+
+	A cada vez que o programa é rodado, o resultado pode vir a ser diferente. Isso porque, as vezes, um processo ou outro é inserido um pouco depois de certa ação do escalonador. Não acho que seja um problema, tendo em vista que o programa se comporta corretamente a partir de cada uma dessas situações.
+
+	[CORRIGIDO-> LINHAS 372 A 378 -> ADICIONEI UMA ESPERA PEQUENA PARA EVITAR CONFLITO]
+
+	Um erro chato que começou a aparecer nesse final é que, quando um processo I/O BOUND está na fila de waiting e todos os processos (inclusive ele) não executarão mais (ele está apenas na fila de waiting esperando o último I/O), o programa não encerra corretamente, pegando um processo aleatório e tentando executá-lo. Não consegui resolver esta parte...
+	
+	[CORRIGIDO-> LINHAS 126 A 128 -> MODIFIQUEI A FUNÇÃO DE RETIRADA DA FILA. ACHO QUE ESTAVA COLOCANDO ALGUM VALOR ERRADO DE PONTEIRO, O QUE DEIXOU MINHA FILA COM REFERÊNCIAS ERRADAS]
+
+	No mais, aparentemente está tudo correto. Os resultados obtidos foram os esperados.
+
+RODADA 1:
+
+	exec prog1 prioridade=4
+	exec prog2 prioridade=2
+	exec prog3 prioridade=1
+
+	RESULTADO:
+
+					>>>>>>> SEGUNDO 0 A 1 <<<<<<< 
+
+		[PROCESSO prog1 INSERIDO NA FILA CORRESPONDENTE]
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][5][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog1
+		PID: 10224
+		PRIORIDADE: 4
+
+				>>>>>>> SEGUNDO 1 A 2 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][4][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog1
+		PID: 10224
+		PRIORIDADE: 4
+
+		[PROCESSO prog2 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 2 A 3 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: prog2[10225][5][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10225
+		PRIORIDADE: 2
+
+		[PROCESSO prog3 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 3 A 4 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10226][5][0] --> null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog3
+		PID: 10226
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 4 A 5 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10226][4][0] --> null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog3
+		PID: 10226
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 5 A 6 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10226][3][0] --> null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog3
+		PID: 10226
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 6 A 7 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10226][2][0] --> null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog3
+		PID: 10226
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 7 A 8 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10226][1][0] --> null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog3
+		PID: 10226
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 8 A 9 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: prog2[10225][4][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10225
+		PRIORIDADE: 2
+
+				>>>>>>> SEGUNDO 9 A 10 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: prog2[10225][3][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10225
+		PRIORIDADE: 2
+
+				>>>>>>> SEGUNDO 10 A 11 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: prog2[10225][2][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10225
+		PRIORIDADE: 2
+
+				>>>>>>> SEGUNDO 11 A 12 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: prog2[10225][1][0] --> null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10225
+		PRIORIDADE: 2
+
+				>>>>>>> SEGUNDO 12 A 13 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][3][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog1
+		PID: 10224
+		PRIORIDADE: 4
+
+				>>>>>>> SEGUNDO 13 A 14 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][2][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog1
+		PID: 10224
+		PRIORIDADE: 4
+
+				>>>>>>> SEGUNDO 14 A 15 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: prog1[10224][1][0] --> null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog1
+		PID: 10224
+		PRIORIDADE: 4
+
+
+
+
+		TODOS OS PROCESSOS TERMINARAM
+
+		FIM DO ESCALONADOR DE PROCESSOS
+
+
+		CONCLUSÃO: RESULTADO OK
+
+
+
+
+
+RODADA 2
+	
+	exec prog1 prioridade=7
+	exec prog2 prioridade=6
+	exec prog3 prioridade=7
+	exec prog4 prioridade=6	
+
+	RESULTADO:
+		[PROCESSO prog1 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 0 A 1 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[13452][5][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 13452
+		PRIORIDADE: 7
+
+		[PROCESSO prog2 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 1 A 2 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[13453][5][0] --> null
+
+		PRIO 7: prog1[13452][4][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 13453
+		PRIORIDADE: 6
+
+		[PROCESSO prog3 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 2 A 3 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][4][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[13452][4][0] --> prog3[13454][5][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 13452
+		PRIORIDADE: 7
+
+		[PROCESSO prog4 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 3 A 4 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][4][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog4[13455][5][0] --> null
+
+		PRIO 7: prog1[13452][3][0] --> prog3[13454][5][0] --> null
+
+
+		EXECUTANDO: prog4
+		PID: 13455
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 4 A 5 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][4][1] --> prog4[13455][4][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog3[13454][5][0] --> prog1[13452][3][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 13454
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 5 A 6 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][4][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[13453][4][0] --> null
+
+		PRIO 7: prog3[13454][4][0] --> prog1[13452][3][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 13453
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 6 A 7 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][4][1] --> prog2[13453][3][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[13452][3][0] --> prog3[13454][4][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 13452
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 7 A 8 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][3][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog4[13455][4][0] --> null
+
+		PRIO 7: prog1[13452][2][0] --> prog3[13454][4][0] --> null
+
+
+		EXECUTANDO: prog4
+		PID: 13455
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 8 A 9 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][3][1] --> prog4[13455][3][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog3[13454][4][0] --> prog1[13452][2][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 13454
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 9 A 10 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][3][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[13453][3][0] --> null
+
+		PRIO 7: prog3[13454][3][0] --> prog1[13452][2][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 13453
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 10 A 11 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][3][1] --> prog2[13453][2][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[13452][2][0] --> prog3[13454][3][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 13452
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 11 A 12 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][2][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog4[13455][3][0] --> null
+
+		PRIO 7: prog1[13452][1][0] --> prog3[13454][3][0] --> null
+
+
+		EXECUTANDO: prog4
+		PID: 13455
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 12 A 13 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][2][1] --> prog4[13455][2][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog3[13454][3][0] --> prog1[13452][1][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 13454
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 13 A 14 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][2][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[13453][2][0] --> null
+
+		PRIO 7: prog3[13454][2][0] --> prog1[13452][1][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 13453
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 14 A 15 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][2][1] --> prog2[13453][1][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[13452][1][0] --> prog3[13454][2][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 13452
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 15 A 16 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][1][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog4[13455][2][0] --> null
+
+		PRIO 7: prog3[13454][2][0] --> null
+
+
+		EXECUTANDO: prog4
+		PID: 13455
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 16 A 17 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][1][1] --> prog4[13455][1][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog3[13454][2][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 13454
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 17 A 18 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][1][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[13453][1][0] --> null
+
+		PRIO 7: prog3[13454][1][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 13453
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 18 A 19 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][1][1] --> prog2[13453][0][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog3[13454][1][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 13454
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 19 A 20 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][0][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog4[13455][1][0] --> null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog4
+		PID: 13455
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 20 A 21 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[13453][0][1] --> prog4[13455][0][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 21 A 22 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][0][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 22 A 23 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog4[13455][0][1] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+
+
+
+		TODOS OS PROCESSOS TERMINARAM
+
+		FIM DO ESCALONADOR DE PROCESSOS
+
+
+
+		[Aqui acontece aquele erro acima mencionado. Os processos acabaram todos, mas existem alguns ainda na fila de waiting (que terminarão assim que a espera terminar). Acredito que seja algum erro de ponteiro, mas não tive tempo de corrigir.]
+		CORRIGIDO!!
+
+		CONCLUSÃO: RESULTADO OK
+
+
+
+
+RODADA 3
+	
+	exec prog1 prioridade=7
+	exec prog2 prioridade=6
+	exec prog3 prioridade=1
+
+	RESULTADO:
+
+				>>>>>>> SEGUNDO 0 A 1 <<<<<<< 
+
+		[PROCESSO prog1 INSERIDO NA FILA CORRESPONDENTE]
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][5][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 10283
+		PRIORIDADE: 7
+
+		[PROCESSO prog2 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 1 A 2 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][5][0] --> null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 10284
+		PRIORIDADE: 6
+
+		[PROCESSO prog3 INSERIDO NA FILA CORRESPONDENTE]
+
+				>>>>>>> SEGUNDO 2 A 3 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][4][3] --> null
+
+		PRIO 1: prog3[10285][5][0] --> null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 10285
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 3 A 4 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][4][2] --> null
+
+		PRIO 1: prog3[10285][4][0] --> null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 10285
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 4 A 5 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][4][1] --> null
+
+		PRIO 1: prog3[10285][3][0] --> null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 10285
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 5 A 6 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10285][2][0] --> null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][4][0] --> null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 10285
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 6 A 7 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: prog3[10285][1][0] --> null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][4][0] --> null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog3
+		PID: 10285
+		PRIORIDADE: 1
+
+				>>>>>>> SEGUNDO 7 A 8 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][4][0] --> null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 10284
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 8 A 9 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][3][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][4][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 10283
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 9 A 10 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][3][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][3][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 10283
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 10 A 11 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][3][1] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][2][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 10283
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 11 A 12 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][3][0] --> null
+
+		PRIO 7: prog1[10283][1][0] --> null
+
+
+		EXECUTANDO: prog2
+		PID: 10284
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 12 A 13 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][2][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: prog1[10283][1][0] --> null
+
+
+		EXECUTANDO: prog1
+		PID: 10283
+		PRIORIDADE: 7
+
+				>>>>>>> SEGUNDO 13 A 14 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][2][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 14 A 15 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][2][1] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 15 A 16 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][2][0] --> null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10284
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 16 A 17 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][1][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 17 A 18 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][1][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 18 A 19 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][1][1] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 19 A 20 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: prog2[10284][1][0] --> null
+
+		PRIO 7: null
+
+
+		EXECUTANDO: prog2
+		PID: 10284
+		PRIORIDADE: 6
+
+				>>>>>>> SEGUNDO 20 A 21 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][0][3] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 21 A 22 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][0][2] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+				>>>>>>> SEGUNDO 22 A 23 <<<<<<< 
+
+		AS FILAS ESTÃO DA SEGUINTE FORMA:
+
+		WAITING: prog2[10284][0][1] --> null
+
+		PRIO 1: null
+
+		PRIO 2: null
+
+		PRIO 3: null
+
+		PRIO 4: null
+
+		PRIO 5: null
+
+		PRIO 6: null
+
+		PRIO 7: null
+
+		NÃO HÁ NENHUM PROCESSO PRONTO PARA SER EXECUTADO. CPU OCIOSA
+
+
+
+
+		TODOS OS PROCESSOS TERMINARAM
+
+		FIM DO ESCALONADOR DE PROCESSOS
+
+		CONCLUSÃO: RESULTADO OK
+
+
+
+

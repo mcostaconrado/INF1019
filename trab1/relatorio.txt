@@ -1,0 +1,4 @@
+CONRADO MACHADO COSTA	1710234 	TRABALHO 1
+
+
+Não consegui implementar, no meu trabalho, o real time, pois não conseguia saber quando o processo terminava de fato, apenas consigo terminá-lo após x tempo.

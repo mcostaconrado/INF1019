@@ -1,0 +1,4 @@
+exec prog1 prioridade=7
+exec prog2 prioridade=6
+exec prog3 prioridade=7
+exec prog4 prioridade=6	

@@ -1,0 +1,630 @@
+INF1019 - SISTEMAS DE COMPUTAÇÃO 
+
+
+PROFESSOR: LUIZ FERNANDO BESSA SEIBEL
+ALUNO: CONRADO MACHADO COSTA - 1710234
+
+
+
+RELATÓRIO - LABORATÓRIO 5 - THREADS
+
+QUESTÃO 1
+
+ENUNCIADO: 
+
+		1) Implemente um programa que crie 2 threads:
+	Uma delas (contCrescente) contará de 1 a N=20 (com pausas de T1=2 segundos) imprimindo o
+	valor de contCrescente. A outra (contDecrescente) de M=30 a 1 (com pausas de T2=1 segundo)
+	imprimindo o valor de contDecrescente.
+
+
+CÓDIGO FONTE:
+
+	#include <pthread.h>
+	#include <stdio.h>
+	#define NUM_THREADS 2
+
+	void *contDecrescente(void *threadid){
+		int i = 30;
+
+		while (i != 0){
+			printf("Thread %d: %i\n", threadid, i); fflush(stdout);
+			i--;
+			sleep(2);
+		}
+		pthread_exit(NULL);
+	}
+
+	void *contCrescente(void *threadid){
+		int i = 20;
+
+		for(int j = 1; j <= i; j++){
+			printf("\tThread %d: %i\n", threadid, j); fflush(stdout);
+			sleep(1);
+		}
+		pthread_exit(NULL); 
+	}
+		
+	int main(){
+
+		pthread_t threads[NUM_THREADS];
+		int t = 0;
+
+		printf("Criando thread para contar decrescente....\n");
+		pthread_create(&threads[0], NULL, contDecrescente, (void *)t);
+
+		t = 1;
+		printf("Criando thread para contar cresente....\n");
+		pthread_create(&threads[1], NULL, contCrescente, (void *)t);
+		
+		for(t=0; t < NUM_THREADS; t++)
+			pthread_join(threads[t],NULL); /* wait for all the threads to terminate*/
+
+	}
+
+
+RESULTADO: 
+
+	Criando thread para contar decrescente....
+	Criando thread para contar cresente....
+	Thread 0: 30
+		Thread 1: 1
+		Thread 1: 2
+	Thread 0: 29
+		Thread 1: 3
+		Thread 1: 4
+	Thread 0: 28
+		Thread 1: 5
+		Thread 1: 6
+	Thread 0: 27
+		Thread 1: 7
+		Thread 1: 8
+	Thread 0: 26
+		Thread 1: 9
+		Thread 1: 10
+	Thread 0: 25
+		Thread 1: 11
+		Thread 1: 12
+	Thread 0: 24
+		Thread 1: 13
+		Thread 1: 14
+	Thread 0: 23
+		Thread 1: 15
+		Thread 1: 16
+	Thread 0: 22
+		Thread 1: 17
+		Thread 1: 18
+	Thread 0: 21
+		Thread 1: 19
+		Thread 1: 20
+	Thread 0: 20
+	Thread 0: 19
+	Thread 0: 18
+	Thread 0: 17
+	Thread 0: 16
+	Thread 0: 15
+	Thread 0: 14
+	Thread 0: 13
+	Thread 0: 12
+	Thread 0: 11
+	Thread 0: 10
+	Thread 0: 9
+	Thread 0: 8
+	Thread 0: 7
+	Thread 0: 6
+	Thread 0: 5
+	Thread 0: 4
+	Thread 0: 3
+	Thread 0: 2
+	Thread 0: 1
+	
+ANÁLISE: 
+	
+	Nesse exercício, foram criadas duas threads dentro do processo. Elas executam em concorrência, pegando, cada uma, um tempo de execução do processo. Isso dá pra ser comprovado pois as saídas de cada thread estão intercaladas. Como o tempo de espera da Thread 0 é duas vezes maior que o da thread 1, a 1 acaba mostrando um bloco de duas saídas, enquanto que a 0 mostra uma.
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 2
+
+ENUNCIADO: 
+
+
+	Acrescente agora uma variável global inteira que é inicializada com zero e é incrementada e impressa na tela por cada thread (uma soma à variável um valor = 1 e outra soma à variável um valor = 5).
+	Verifique que ambas as threads manipulam a mesma variável.
+
+
+
+CÓDIGO FONTE:
+
+
+	#include <pthread.h>
+	#include <stdio.h>
+	#define NUM_THREADS 2
+	int global = 0;
+
+	void *mais5(void *threadid){
+		global += 5;
+
+		printf("\tThread %d: Acrescentando 5 à variàvel. Valor final: %i\n", threadid, global); fflush(stdout);
+		
+		pthread_exit(NULL); 
+	}
+
+	void *mais1(void *threadid){
+		global += 1;
+		printf("\tThread %d: Acrescentando 1 à variàvel. Valor final: %i\n", threadid, global); fflush(stdout);
+		
+		pthread_exit(NULL); 
+	}
+		
+	int main(){
+
+		pthread_t threads[NUM_THREADS];
+		int t = 0;
+
+		printf("Criando thread para adicionar 1....\n");
+		pthread_create(&threads[0], NULL, mais1, (void *)t);
+
+		t = 1;
+		printf("Criando thread para adicionar 5....\n");
+		pthread_create(&threads[1], NULL, mais5, (void *)t);
+		
+		for(t=0; t < NUM_THREADS; t++)
+			pthread_join(threads[t],NULL); /* wait for all the threads to terminate*/
+
+	}
+
+
+RESULTADO: 
+
+	Criando thread para adicionar 1....
+	Criando thread para adicionar 5....
+	Thread 0: Acrescentando 1 à variàvel. Valor final: 1
+	Thread 1: Acrescentando 5 à variàvel. Valor final: 6
+
+	
+ANÁLISE: 
+	
+	Ambas as threads manipulam a mesma variável. Diferentemente dos processos no fork, as threads compartilham código, dados e arquivos do processo. Ou seja, como as threads fazem parte do mesmo processo, elas irão utilizar as mesmas variáveis GLOBAIS. Cada thread tem seus registradores e suas pilhas. Então, elas conseguem criar variáveis locais normalmente, sem interferência de uma thread nas variáveis locais de outra, podendo inclusive escolher o mesmo nome, por exemplo. 
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 
+
+ENUNCIADO: 
+
+		Usando threads, escreva um programa C que implemente o problema do
+	produtor/consumidor. O produtor e o consumidor devem ser threads de execução dentro do
+	mesmo processo compartilhando os recursos do processo. O produtor deve produzir dados
+	(números inteiros aleatórios) a cada 1 segundo colocando-os em uma fila (buffer, de
+	implementação circular). O consumidor deve retirar dados da fila a cada 2 segundos. O tamanho
+	máximo da fila deve ser de 8 elementos (MAXFILA) e tanto o produtor como o consumidor
+	devem produzir/consumir 64 elementos (números inteiros de 1 a 64, por exemplo) evitando
+	condições de corrida. Variáveis compartilhadas entre threads são simplesmente variáveis
+	globais.	
+
+
+CÓDIGO FONTE:
+
+	#include <pthread.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <time.h>
+	#include <unistd.h>
+	#define NUM_THREADS 2
+	#define NUM_NUM 64
+	#define MAX_FILA 8
+
+	int *lista;
+	int id_cauda;
+	int id_cabeca;
+	int n_elementos;
+	int produtor_terminado = 0;
+
+
+	void init(){
+		lista = (int*) malloc (sizeof(int)*MAX_FILA);
+		id_cabeca = 0;
+		id_cauda = 0;
+		n_elementos = 0;
+		srand( time(NULL) );
+
+	}
+
+	void *retira(void *threadid){
+		for (int i = 0; i < NUM_NUM; i++){
+
+			if (id_cabeca == id_cauda && produtor_terminado) break;
+
+			printf("\tConsumidor: ");		
+
+			do{
+				printf("%i ", lista[id_cabeca]); fflush(stdout);
+				lista[id_cabeca] = -1;
+				id_cabeca++;
+
+				if (id_cabeca > (MAX_FILA-1)) id_cabeca = 0;
+				n_elementos--;
+
+
+
+			} while (id_cabeca != id_cauda);
+
+
+			printf("\n");
+
+			sleep(2);
+		}
+		printf("Consumidor terminado\n");
+		pthread_exit(NULL); 
+	}
+
+	void *insere(void *threadid){
+		for (int i = 0; i < NUM_NUM; i++){
+			int x = rand()%100;
+			
+			lista[id_cauda] = x;
+
+			id_cauda++;
+			if (id_cauda > (MAX_FILA - 1)) id_cauda = 0;
+			n_elementos++;
+
+			if(n_elementos > MAX_FILA){
+				printf("FILA CHEIA");
+				exit(0);	
+			} 
+			
+			printf("Produtor: %d\n", x); fflush(stdout);
+
+			sleep(1);
+
+		}
+
+		printf("Produtor terminado\n");
+		produtor_terminado = 1;
+		pthread_exit(NULL); 
+	}
+
+	int main(){
+		init();
+		pthread_t threads[NUM_THREADS];
+		int t = 0;
+
+		printf("Criando produtor....\n");
+		pthread_create(&threads[0], NULL, insere, (void *)t);
+
+		t = 1;
+		printf("Criando consumidor....\n");
+		pthread_create(&threads[1], NULL, retira, (void *)t);
+		
+		for(t=0; t < NUM_THREADS; t++)
+			pthread_join(threads[t],NULL); /* wait for all the threads to terminate*/
+
+		printf("Terminado\n");
+
+		free(lista);
+
+	}
+
+RESULTADO: 
+
+	Criando produtor....
+	Criando consumidor....
+	Produtor: 75
+		Consumidor: 75 
+	Produtor: 86
+		Consumidor: 86 
+	Produtor: 4
+	Produtor: 42
+		Consumidor: 4 42 
+	Produtor: 77
+	Produtor: 55
+		Consumidor: 77 55 
+	Produtor: 92
+	Produtor: 43
+		Consumidor: 92 43 
+	Produtor: 72
+	Produtor: 60
+		Consumidor: 72 60 
+	Produtor: 78
+	Produtor: 33
+		Consumidor: 78 33 
+	Produtor: 87
+	Produtor: 49
+		Consumidor: 87 49 
+	Produtor: 80
+	Produtor: 95
+		Consumidor: 80 95 
+	Produtor: 79
+	Produtor: 8
+		Consumidor: 79 8 
+	Produtor: 73
+	Produtor: 26
+		Consumidor: 73 26 
+	Produtor: 62
+	Produtor: 15
+		Consumidor: 62 15 
+	Produtor: 91
+	Produtor: 64
+		Consumidor: 91 64 
+	Produtor: 57
+	Produtor: 38
+		Consumidor: 57 38 
+	Produtor: 88
+	Produtor: 33
+		Consumidor: 88 33 
+	Produtor: 70
+	Produtor: 86
+		Consumidor: 70 86 
+	Produtor: 77
+	Produtor: 45
+		Consumidor: 77 45 
+	Produtor: 72
+	Produtor: 33
+		Consumidor: 72 33 
+	Produtor: 40
+	Produtor: 50
+		Consumidor: 40 50 
+	Produtor: 88
+	Produtor: 32
+		Consumidor: 88 32 
+	Produtor: 45
+	Produtor: 12
+		Consumidor: 45 12 
+	Produtor: 44
+	Produtor: 24
+		Consumidor: 44 24 
+	Produtor: 46
+	Produtor: 83
+		Consumidor: 46 83 
+	Produtor: 25
+	Produtor: 78
+		Consumidor: 25 78 
+	Produtor: 78
+	Produtor: 4
+		Consumidor: 78 4 
+	Produtor: 86
+	Produtor: 3
+		Consumidor: 86 3 
+	Produtor: 83
+	Produtor: 0
+		Consumidor: 83 0 
+	Produtor: 18
+	Produtor: 26
+		Consumidor: 18 26 
+	Produtor: 65
+	Produtor: 27
+		Consumidor: 65 27 
+	Produtor: 64
+	Produtor: 5
+		Consumidor: 64 5 
+	Produtor: 12
+	Produtor: 86
+		Consumidor: 12 86 
+	Produtor: 91
+	Produtor: 89
+		Consumidor: 91 89 
+	Produtor: 84
+	Produtor: 64
+		Consumidor: 84 64 
+	Produtor terminado
+	Consumidor terminado
+	Terminado
+	
+ANÁLISE: 
+	
+	Foi criado um vetor de 8 posições (global) e duas variáveis globais: id_cabeca e id_cauda para identificar, respectivamente, as posições de inserção e retirada dos elementos do vetor.
+
+	Se o produtor colocasse um número a cada segundo e o consumidor tirasse 1 número a cada 2 segundos, o vetor ficaria cheio, e o consumidor perderia alguns dados. Por isso, implementei de uma forma que o consumidor sempre tire todos os dados do vetor a cada 2 segundos (o que dá, geralmente, 2 elementos).
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 4
+
+ENUNCIADO: 
+
+		Faça um programa para implementar a corrida dos sapos. A corrida pode ter N sapos (por
+	exemplo N=5). A distância do pulo de um sapo é um número aleatório que varia de 1 a X (por
+	exemplo, X=100). O tempo que o sapo descansa para o próximo pulo é também um número
+	aleatório que vai de 1 a Y (por exemplo, Y=10). Cada sapo deve percorrer uma distância D (por
+	exemplo, D=300). N, X, Y e D devem ser definidos no pré-processador C (#define...).
+	Cada sapo (número de 1 a N) deve ser implementado por uma thread que contém um loop que
+	executa o pulo do sapo, calculando a distância percorrida ou a percorrer e a espera para o
+	próximo pulo. A thread termina quando o sapo tiver percorrido a distância D. Ao final das
+	threads você deve indicar a ordem de chegada dos sapos.
+
+
+CÓDIGO FONTE:
+
+	#include <pthread.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <time.h>
+	#include <unistd.h>
+
+	#define N 5
+	#define X 100
+	#define Y 5
+	#define D 300
+
+	int distancias[N];
+	int classificacao[N];
+	int descansos[N];
+	int pulos[N];
+
+	int corrida_acontecendo;
+	int sapos_terminados;
+
+	void init(){
+		for (int i = 0; i < N; i++){
+			distancias[i] = 0;
+			classificacao[i] = -1;
+		}
+		corrida_acontecendo = 1;
+		sapos_terminados = 0;
+	}
+
+	void sapo (void *threadid){
+		int pulo = 0;
+		int descanso = 0;
+		
+		while(descanso == 0 || pulo == 0){
+			pulo = rand()%X;
+			descanso = rand()%(Y/2) + Y/2;
+		}
+
+		int distancia_percorrida = 0;
+		descansos[(int)threadid] = descanso;
+		pulos[(int)threadid] = pulo;
+
+		sleep(5);
+
+		while(distancia_percorrida < D){
+			distancia_percorrida += pulo;
+			distancias[(int)threadid] = distancia_percorrida;
+			if (distancia_percorrida >= D) break;
+			sleep(descanso);
+		}
+
+		classificacao[sapos_terminados] = threadid;
+		sapos_terminados++;
+	}
+
+	void controle (void *threadid){
+		
+		sleep(4);
+		system("clear");
+		while(corrida_acontecendo){
+
+			for (int i = 0; i < N; i++){
+				printf("O sapo numero %d pula com distancia %d e descansa %d segundos.\n", i+1, pulos[i], descansos[i]);
+			}
+			
+			printf("\nLINHA DE CHEGADA: %d\n\n", D);
+
+			for (int i = 0 ; i < N; i++){
+
+				float porcentagem = (distancias[i]*1.0)/D*100;
+
+				printf("Sapo %02d: ", i+1);
+
+				for (int j = 0; j < 40*distancias[i]/D && j < 40; j++){
+					putchar('.');fflush(stdout);
+				}
+
+				if (porcentagem > 100) porcentagem = 100;
+
+				if (distancias[i] > D) distancias[i] = D;
+				printf(" %d (%.0f %)", distancias[i], porcentagem);
+				printf("\n");fflush(stdout);
+
+			}
+
+			printf("\n");fflush(stdout);
+			sleep(1);
+			system("clear");
+			
+		}
+	}
+
+	int main(){
+
+		init();
+
+		srand(time(NULL));
+		pthread_t threads[N+1];
+		system("clear");
+
+		for(int t=0;t < N;t++)
+			pthread_create(&threads[t], NULL, sapo, (void *)t);
+
+		pthread_create(&threads[N], NULL, controle, (void *)N);
+
+		sleep(1);
+		printf("PREPARAR\n");
+		sleep(1);
+		printf("APONTAR\n");
+		sleep(1);
+		printf("JA!!\n");
+
+		for(int t=0; t < N; t++)
+			pthread_join(threads[t],NULL); /* wait for all the threads to terminate*/
+
+		sleep(1);
+
+		corrida_acontecendo = 0;
+
+		pthread_join(threads[N],NULL);
+
+		printf("CORRIDA DE SAPO TERMINADA!!!\n\nClassificacao:\n");
+
+		for (int i = 0; i < N; i++)
+			printf("%i.o lugar: Sapo %i\n", (i+1), (classificacao[i]+1));
+	}
+
+
+RESULTADO: 
+
+	[Como há várias chamadas de sistema para limpar a tela, vou colocar cópias de diferentes momentos da execução:]
+
+	PREPARAR
+	APONTAR
+	JA!!
+	
+	-------
+
+	O sapo numero 1 pula com distancia 19 e descansa 2 segundos.
+	O sapo numero 2 pula com distancia 3 e descansa 3 segundos.
+	O sapo numero 3 pula com distancia 51 e descansa 3 segundos.
+	O sapo numero 4 pula com distancia 24 e descansa 2 segundos.
+	O sapo numero 5 pula com distancia 51 e descansa 2 segundos.
+
+	LINHA DE CHEGADA: 300
+
+	Sapo 01: .......... 76 (25 %)
+	Sapo 02: . 9 (3 %)
+	Sapo 03: .................... 153 (51 %)
+	Sapo 04: ............ 96 (32 %)
+	Sapo 05: ........................... 204 (68 %)
+
+	-----
+
+	O sapo numero 1 pula com distancia 19 e descansa 2 segundos.
+	O sapo numero 2 pula com distancia 3 e descansa 3 segundos.
+	O sapo numero 3 pula com distancia 51 e descansa 3 segundos.
+	O sapo numero 4 pula com distancia 24 e descansa 2 segundos.
+	O sapo numero 5 pula com distancia 51 e descansa 2 segundos.
+
+	LINHA DE CHEGADA: 300
+
+	Sapo 01: ........................................ 300 (100 %)
+	Sapo 02: ........................................ 300 (100 %)
+	Sapo 03: ........................................ 300 (100 %)
+	Sapo 04: ........................................ 300 (100 %)
+	Sapo 05: ........................................ 300 (100 %)
+
+	------
+	
+	CORRIDA DE SAPO TERMINADA!!!
+
+	Classificacao:
+	1.o lugar: Sapo 5
+	2.o lugar: Sapo 3
+	3.o lugar: Sapo 4
+	4.o lugar: Sapo 1
+	5.o lugar: Sapo 2
+	
+ANÁLISE: 
+	
+	Fiz o processo criar N threads para os sapos, e mais uma para criar um sistema de controle da corrida, como se fosse o placar. Ela atualiza a cada segundo.
+
+	Cada thread seleciona números aleatórios para o tamanho do pulo e o tempo de descanso, e os armazena dois vetores globais (pulos e descansos) para que a thread de controle tenha acesso e informe os saltos e descansos de cada sapo. Além disso, há um while em cada thread para incrementar o pulo do sapo em um vetor de distancias_percorridas (por cada sapo) e esperar o descanso. 
+
+	A thread de controle realiza um loop de 1 em 1 segundo atualizando as posicoes de acordo com o vetor de distancias_percorridas, fazendo uma chamada de sistema para limpar a tela sempre (para que haja uma ideia de atualização mesmo). 
+
+	Quando uma thread de um sapo acaba (quando ele chega na distância D), é colocado o número do sapo no vetor de classificacao, na primeira posição livre. Quando todas as N threads dos sapos acabarem, uma variável de corrida_acontecendo vira falsa, quebrando o looping da thread de controle. Voltando para o processo normal, fora das threads, é exibida a classificação final.
+
+	Foi bem divertido implementar esse exercício, tive apenas uns problemas de sincronização do início das threads, mas depois consertei.
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+

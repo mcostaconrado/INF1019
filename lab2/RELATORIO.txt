@@ -1,0 +1,434 @@
+INF1019 - SISTEMAS DE COMPUTAÇÃO 
+
+
+PROFESSOR: LUIZ FERNANDO BESSA SEIBEL
+ALUNO: CONRADO MACHADO COSTA - 1710234
+
+
+
+RELATÓRIO - LABORATÓRIO 2 - MEMÓRIA COMPARTILHADA
+
+QUESTÃO 1: 
+
+ENUNCIADO: 
+
+	1) Faça um programa que:
+ 		Leia a mensagem do dia do teclado.
+ 		Crie uma memória compartilhada.
+ 		Salve a mensagem na memória compartilhada.
+ 		Faça um outro programa que utilize a mesma chave e exiba a mensagem do dia para o usuário. 
+
+
+CÓDIGO FONTE:
+
+	[ARQUIVO ex1A.c]
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <sys/shm.h>	
+	#include <sys/ipc.h> //FLAGS DE MODO DE CRIAÇÃO
+	#include <sys/stat.h> //FLAGS DE MODO DE CRIAÇÃO -> PERMISSÕES DE USUÁRIOS
+	#include <string.h>
+
+	int main(){
+
+		//char* mensagem;
+		char mensagem[256];
+		int segmento;
+		char arg[13];
+		char *call[2] = {NULL, NULL};
+		char *p;
+
+		/*ALOCAÇÃO DA MEMÓRIA: 
+
+			int shmget (key_t key, size_t size, int shmflg);
+
+			key: chave de identificação da memória (se souber qual é) ou IPC_PRIVATE para gerar um identificador novo
+	 		size: quantidade MÍNIMA de memória a ser alocada
+	 		shmflg: modo de criação
+		*/
+
+		segmento = shmget(IPC_PRIVATE, sizeof(char)*100, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG | S_IRWXO); // creat entry if key does not exist | owner can write only | others can read only
+		
+		p = (char*) shmat(segmento, 0, 0);
+
+		snprintf(arg, 13, "%d", segmento);
+
+		printf("[PROGRAMA 1] ESCREVA A MENSAGEM DO DIA: \n\t>> ");
+		scanf("%[^\n]s", p);
+
+		call[0] = arg;
+
+
+
+		shmdt(p); //DESANEXANDO;
+		execve( "./ex1B", call, 0);
+
+		//shmctl(segmento, IPC_RMID, 0); //DESALOCANDO MEMÓRIA -> SO FAÇO ISSO NO OUTRO PROGRAMA
+
+		return 0;
+	}
+	--------------------------------------------------------
+
+	[ARQUIVO ex1B.c]
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <sys/shm.h>	
+	#include <sys/ipc.h> //FLAGS DE MODO DE CRIAÇÃO
+	#include <sys/stat.h> //FLAGS DE MODO DE CRIAÇÃO -> PERMISSÕES DE USUÁRIOS
+	#include <string.h>
+
+	int main(int argc, char* argv[]){
+
+		int segmento;
+		int key = (atoi(argv[0]));
+		char *p;
+
+		/*ALOCAÇÃO DA MEMÓRIA: 
+
+			int shmget (key_t key, size_t size, int shmflg);
+
+			key: chave de identificação da memória (se souber qual é) ou IPC_PRIVATE para gerar um identificador novo
+	 		size: quantidade MÍNIMA de memória a ser alocada
+	 		shmflg: modo de criação
+		*/
+		
+		p = (char*) shmat(key, 0, 0);
+
+		printf("\n[PROGRAMA 2] A MENSAGEM DO DIA É \n\t>> ");
+
+		printf("%s\n\n", p);
+
+		shmdt(p); //DESANEXANDO;
+
+		shmctl(key, IPC_RMID, 0); //DESALOCANDO MEMÓRIA
+
+		return 0;
+	}
+
+RESULTADO: 
+
+	[PROGRAMA 1] ESCREVA A MENSAGEM DO DIA: 
+		>> OI
+
+	[PROGRAMA 2] A MENSAGEM DO DIA É 
+		>> OI
+
+	
+ANÁLISE: 
+	
+	Depois de muito martelar em cima deste exercício, consegui fazer. Meu erro, no início, era que eu não estava usando as flags necessárias para dar permissão para o processo A escrever na região da memória.
+
+	FLAGS ANTERIORES: IPC_CREAT | S_IWUSR | S_IROTH. Não entendi, porém, porque não foi permitido escrever, já que S_IWUSR dá a permissão pro dono do segmento da memória escrever (que seria o processo A, na minha cabeça). Vou perguntar isso na aula de quinta feira. 
+
+	Continuando: fiz o exercício em dois arquivos.
+
+	arquivo ex1A.c:
+		Neste arquivo, eu aloco a memória compartilhada e anexo-a a um ponteiro para char. Faço um scanf para colocar a string entrada pelo usuário neste ponteiro (essa era a parte do seg fault que estava ocorrendo anteriormente).
+		Depois, transformo o segmento gerado shmget de int para string. Crio um vetor de strings com o segmento transformado dentro.
+		Chamo a função execve para executar o programa B com o parâmetro contido no vetor.
+
+	arquivo ex1B.c:
+		Neste arquivo, recebo argumentos passados para a main (que, no caso, é o segmento de memória com a forma de string). Transformo-o em int de volta e uso isso para anexar um ponteiro à região da memória que tem essa chave. Desse modo, tenho acesso à região da memória que o programa A escreveu a mensagem, sendo possível mostrá-la na tela.
+		Depois, desanexo o ponteiro e desaloco a área de memória utilizada.
+
+	Tive muita dificuldade para entender como funcionava a passagem de parâmetros por meio de *argv[], mas acabei conseguindo no final. 
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 2: 
+
+ENUNCIADO: 
+
+		2) Faça um programa para achar o maior elemento de um vetor de 128 posições de acordo com o seguinte algoritmo:
+	 		O primeiro processo irá criar o vetor a ser preenchido com números gerados aleatoriamente.
+	 		O espaço do vetor deve ser dividido em 8 partes, cada uma com 16 posições.
+	 		O seu programa deverá gerar um processo para cada parte do vetor que irá indicar a posição de maior valor de sua parte via memória compartilhada.
+	 		O processo pai deve avaliar as respostas dos 8 processos e imprimir o vetor e a posição do maior elemento. 
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <sys/shm.h>	
+	#include <sys/ipc.h> //FLAGS DE MODO DE CRIAÇÃO
+	#include <sys/stat.h> //FLAGS DE MODO DE CRIAÇÃO -> PERMISSÕES DE USUÁRIOS
+	#include <string.h>
+	#include <time.h>
+
+	#define POS 128
+
+
+	int acha_posicao (int *v, int pos_inicial){
+		int maior_valor = 0;
+		int maior_pos = pos_inicial;
+		int i;
+
+		for (i = pos_inicial; i < pos_inicial + 16; i++){
+			if (v[i] > maior_valor){
+				maior_valor = v[i];
+				maior_pos = i;
+			}
+		}
+
+		return maior_pos;
+	}
+
+	int main(int argc, char* argv[]){
+
+		int i;
+		srand(time(NULL));
+		int pid[8];
+		int meupid;
+
+		int segmento1, segmento2, *p, *q;
+
+		segmento1 = shmget(IPC_PRIVATE, sizeof(int)*128, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+		segmento2 = shmget(IPC_PRIVATE, sizeof(int)*8, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+		p = (int*)shmat(segmento1, 0, 0);
+		q = (int*)shmat(segmento2, 0, 0);
+
+		for (i = 0; i < POS; i++){
+			p[i] = rand()%500;
+		}
+
+		for (i = 0; i < 8; i++){
+			pid[i] = fork();
+
+			if (pid[i] == 0) break;
+		}
+
+		if (pid[0] == 0){
+			int maior_pos = acha_posicao (p, 0*128/8);
+			q[0] = maior_pos;
+
+		}
+		else if (pid[1] == 0){
+			int maior_pos = acha_posicao (p, 1*128/8);
+			q[1] = maior_pos;
+		}
+		else if (pid[2] == 0){
+			int maior_pos = acha_posicao (p, 2*128/8);
+			q[2] = maior_pos;
+		}
+		else if (pid[3] == 0){
+			int maior_pos = acha_posicao (p, 3*128/8);
+			q[3] = maior_pos;
+		}
+		else if (pid[4] == 0){
+			int maior_pos = acha_posicao (p, 4*128/8);
+			q[4] = maior_pos;
+		}
+		else if (pid[5] == 0){
+			int maior_pos = acha_posicao (p, 5*128/8);
+			q[5] = maior_pos;
+		}
+		else if (pid[6] == 0){
+			int maior_pos = acha_posicao (p, 6*128/8);
+			q[6] = maior_pos;	
+		}
+		else if (pid[7] == 0){
+			int maior_pos = acha_posicao (p, 7*128/8);
+			q[7] = maior_pos;
+		}
+		else{	//pai;
+			int maior = 0;
+			int maiorpos = 0;
+			printf("Eu sou o pai. O vetor aleatório está aí: \n\n");
+
+			for (i = 0; i < 128; i++){
+				printf("%i ", p[i]); fflush(stdout);
+				if (!(i+1)%16) printf("\n");
+			}
+
+			printf("\n\n");
+
+			printf("Cada filho meu achou esses valores como sendo o maior de suas respectivas partes: \n\n");
+			for (i = 0; i < 8; i++){
+				printf("%i " , p[q[i]]);
+				if (p[q[i]] > maior){
+					maior = p[q[i]];
+					maiorpos = q[i];
+				}
+			}
+
+			printf("\n\nO maior numero, portanto, é v[%i] = %i.\n\n", maiorpos, maior);
+		}
+		shmdt(p);
+		shmdt(q);
+		shmctl(segmento1, IPC_RMID, 0);
+		shmctl(segmento2, IPC_RMID, 0);
+	}
+
+
+
+RESULTADO: 
+
+	Eu sou o pai. O vetor aleatório está aí: 
+
+	106 437 427 278 102 255 197 236 411 115 463 494 413 409 91 351 374 401 100 14 182 204 368 245 24 140 305 360 157 215 440 263 153 219 393 107 326 90 196 237 58 159 83 323 68 26 175 294 427 275 308 462 479 29 207 356 169 13 216 326 80 8 442 85 227 335 193 405 278 389 494 188 48 430 11 468 456 186 262 384 313 423 346 293 452 405 1 121 270 69 300 351 77 242 436 156 429 481 413 59 222 407 247 270 337 259 90 294 445 353 178 111 276 376 404 80 133 257 201 404 326 353 107 255 95 395 263 377 
+
+	Cada filho meu achou esses valores como sendo o maior de suas respectivas partes: 
+
+	494 440 393 479 494 452 481 404 
+
+	O maior numero, portanto, é v[11] = 494.
+
+	
+ANÁLISE: 
+	
+	No for que faço os forks, armazeno o pid de cada processo. Sabendo que cada filho enxerga seu pid como sendo 0, fiz uma cadeia de ifs para saber em que processo estou, dividindo assim o vetor em diferentes partes. Depois, é só cada filho escolher o maior valor dentre os 16 que foram passados para ele e transmitir para um outro vetor, em memória compartilhada. Este vetor contém as posições dos maiores valores encontrados por cada um dos processos. Finalmente, com esse vetor preenchido, cabe ao pai escolher qual o maior valor entre eles e printar na tela. 
+
+	Me pareceu trabalhoso esses vários ifs, talvez haja um jeito mais simples de fazer o exercício, mas eu não descobri...
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 3: 
+
+ENUNCIADO: 
+
+	Faça um programa paralelo para achar a transposta de uma matriz.
+	 Crie uma matriz na memória compartilhada e leia dados do teclado para preencher a matriz (4x4) (dica: mapeie a matriz em um vetor)
+	 Crie outra matriz para armazenar a matriz transposta.
+	 Gere 4 processos para calcular a transposta onde cada processo deve transpor uma linha para a respectiva coluna da matriz transposta.
+	 O processo pai deve imprimir a matriz original e a transposta. 
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <sys/shm.h>	
+	#include <sys/ipc.h> //FLAGS DE MODO DE CRIAÇÃO
+	#include <sys/stat.h> //FLAGS DE MODO DE CRIAÇÃO -> PERMISSÕES DE USUÁRIOS
+	#include <string.h>
+
+
+	int main(){
+		int segmento1, segmento2, *matriz, *transposta, status;
+		int i, j;
+		int pid[4];
+
+		segmento1 = shmget(IPC_PRIVATE, sizeof(int)*16, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+		matriz = (int*)shmat(segmento1, 0, 0);
+		segmento2 = shmget(IPC_PRIVATE, sizeof(int)*16, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+		transposta = (int*)shmat(segmento2, 0, 0);
+
+
+		for (i = 0; i < 16; i++){
+			scanf("%i", &matriz[i]);
+		}
+
+		/*for (i = 0; i < 16; i++){
+			//for (i = 0; i < 4; i++){
+			printf("%i ", matriz[i]);
+			//}
+			//printf("\n");
+		}*/
+
+		for (i = 0; i < 4; i++){
+			pid[i] = fork();
+
+			if (pid[i] == 0) break;
+		}
+
+		if (pid[0] == 0){
+			transposta[0] = matriz[0];
+			transposta[4] = matriz[1];
+			transposta[8] = matriz[2];
+			transposta[12] = matriz[3];
+
+		}
+		else if (pid[1] == 0){
+			transposta[1] = matriz[4];
+			transposta[5] = matriz[5];
+			transposta[9] = matriz[6];
+			transposta[13] = matriz[7];
+		}
+		else if (pid[2] == 0){
+			transposta[2] = matriz[8];
+			transposta[6] = matriz[9];
+			transposta[10] = matriz[10];
+			transposta[14] = matriz[11];
+		}
+		else if (pid[3] == 0){
+			transposta[3] = matriz[12];
+			transposta[7] = matriz[13];
+			transposta[11] = matriz[14];
+			transposta[15] = matriz[15];
+		}
+		else{
+
+
+			waitpid(-1, &status, 0);
+
+
+			printf("\n\nMATRIZ: \n\n");
+			for (i = 0; i < 16; i++){
+				printf("%i ", matriz[i]);
+				if (!((i+1)%4)) printf("\n");
+			}
+
+
+			printf("\n\n");
+
+			printf("TRANSPOSTA: \n\n");
+
+			for (i = 0; i < 16; i++){
+				printf("%i ", transposta[i]);
+				if (i > 0 && !((i+1)%4)) printf("\n");
+			}
+		}
+
+
+		shmdt(matriz);
+		shmctl(segmento1, IPC_RMID, 0);
+		shmdt(transposta);
+		shmctl(segmento2, IPC_RMID, 0);
+	}
+
+
+RESULTADO: 
+	<< input >>
+
+	0 1 2 3
+	4 5 6 7
+	8 9 10 11
+	12 13 14 15
+
+	<< \input >>
+
+	MATRIZ: 
+
+	0 1 2 3 
+	4 5 6 7 
+	8 9 10 11 
+	12 13 14 15 
+
+
+	TRANSPOSTA: 
+
+	0 4 8 12 
+	1 5 9 13 
+	2 6 10 14 
+	3 7 11 15 
+
+	
+ANÁLISE: 
+	
+	Assim como no exercício 2, cada processo será responsável por uma área do vetor mapeado como matriz. Armazeno os pids num vetor e, quando o processo enxergar como 0, significa que é a parte pela qual está responsável. A ideia é ver a relação dos índices do vetor normal e o transposto. O pai espera os filhos terminarem de fazer a transposta para, aí sim, imprimir a matriz e a sua transposta. 
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+

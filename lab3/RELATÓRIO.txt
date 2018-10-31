@@ -1,0 +1,1064 @@
+
+INF1019 - SISTEMAS DE COMPUTAÇÃO 
+
+
+PROFESSOR: LUIZ FERNANDO BESSA SEIBEL
+ALUNO: CONRADO MACHADO COSTA - 1710234
+
+
+
+RELATÓRIO - LABORATÓRIO 3 - SINAIS
+
+QUESTÃO 1: 
+
+ENUNCIADO: 
+
+	1) Explique o funcionamento do programa filhocídio.c
+
+
+CÓDIGO FONTE:
+
+	#include <stdio.h>
+	#include <signal.h>
+	#include <stdlib.h>
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#define EVER ;;
+
+
+	void childhandler(int signo);
+	int delay;
+
+
+	int main (int argc, char *argv[])
+	{
+		pid_t pid;
+		signal(SIGCHLD, childhandler);
+			if ((pid = fork()) < 0)
+			{
+				fprintf(stderr, "Erro ao criar filho\n");
+				exit(-1);
+			}
+		if (pid == 0) /* child */
+			/*for(EVER);*/ 
+			sleep(3);
+		else /* parent */
+		{
+			sscanf(argv[1], "%d", &delay); /* read delay from command line */
+			sleep(delay);
+			printf("Program %s exceeded limit of %d seconds!\n", argv[2], delay);
+			kill(pid, SIGKILL);
+		}
+
+		return 0;
+	}
+		
+	void childhandler(int signo) /* Executed if child dies before parent */
+	{
+		int status;
+		pid_t pid = wait(&status);
+		printf("Child %d terminated within %d seconds com estado %d.\n", pid, delay, status);
+		exit(0);
+	}
+
+RESULTADO: 
+
+	Vários....
+
+	filho com for(EVER): 
+
+		Chamada: ccosta@conrado:~/Desktop/INF1019/lab3$ ./filhocidio 3 filhocidio
+		Resultado: Program filhocidio exceeded limit of 3 seconds!
+
+		Chamada: ccosta@conrado:~/Desktop/INF1019/lab3$ ./filhocidio 4 filhocidio
+		Resultado: Program filhocidio exceeded limit of 4 seconds!
+
+	filho com sleep(3):
+
+		Chamada: ccosta@conrado:~/Desktop/INF1019/lab3$ ./filhocidio 4 filhocidio
+		Resultado: Child 15502 terminated within 4 seconds com estado 0.
+
+		Chamada: ccosta@conrado:~/Desktop/INF1019/lab3$ ./filhocidio 2 filhocidio
+		Resultado: Program filhocidio exceeded limit of 2 seconds!
+
+		Chamada: ccosta@conrado:~/Desktop/INF1019/lab3$ ./filhocidio 3 filhocidio
+
+		Resultado: 	Program filhocidio exceeded limit of 3 seconds!
+					Child 15523 terminated within 3 seconds com estado 0.
+					>>
+
+	
+ANÁLISE: 
+
+	São passados, como parâmetro do programa filhocidio.c, um tempo limite e o nome do programa filho. O pai pega esse tempo limite (por meio de argv[]) e espera esse tempo. Se, ao final desse tempo, a função handler não tiver sido chamada, é sinal que o filho ainda está sendo executado. Logo, o pai informa que o filho excedeu o limite de tempo, manda um SIGKILL para ele e termina. 
+
+	Se durante o tempo que o pai está esperando em delay o filho terminar, é mandado um sinal SIGCHLD (quando um sinal filho termina ou para). A função handler childhandler trata esse sinal, dizendo que o filho terminou em tantos segundos e, no final, dando exit() no pograma. 
+
+	Quando o filho está em loop eterno (no for(EVER)), não importa quantos segundos de limite sejam passados na chamada do programa, ele sempre excederá o tempo, sendo terminado pelo pai.
+
+	Se colocarmos o filho para executar apenas X segundos, é só colocarmos um limite superior a esse X na chamada do programa para que a função handler seja chamada quando o SIGCHLD for enviado ao pai (fim da execução do filho)
+	
+
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 2: 
+
+ENUNCIADO: 
+
+	Faça um programa para criar dois processos (fork()), o pai escreve seu pid e espera
+	o filho terminar (waitpid()), o filho escreve o seu pid e termina (exit()). Pesquise uma
+	função do sistema que indique o pid de um processo. Comprove através do pid o
+	comportamento das chamadas ao sistema fork( ), waitpid( ) e exit( ). Descreva suas
+	conclusões.
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+
+	int main(){
+		int pid;
+		int pid_pai;
+		int pid_filho;
+		int status;
+	
+		printf("\n");
+	
+		pid = fork();
+	
+		if ( pid != 0){ //CÓDIGO DO PAI
+	
+			pid_pai = getpid();
+			/*printf("pai falando. pid_filho = %d\n", pid_filho);*/
+			printf("PAI FALANDO: \n\n");
+		
+			printf("Meu PID: %d\n", pid_pai);
+			printf("PID do meu filho: %d\n", pid);
+			printf("esperando filho terminar\n\n\n");
+		
+		
+			waitpid(pid, &status, 0);
+		
+		
+		
+			printf("PAI FALANDO: \n");
+			printf("filho terminou. terminei\n\n");
+		
+		}
+		else{ //CÓDIGO DO FILHO
+			/*printf("filho falando. pid_filho = %d\n", pid_filho);*/
+			pid_filho = getpid();
+			printf("\tFILHO FALANDO: \n\n");
+			printf("\tMeu PID: %d\n", pid_filho);
+			printf("\tTerminei \n\n\n");
+			
+		}
+		return 0;
+	}
+
+
+RESULTADO: 
+
+	PAI: 1
+	PAI: 2
+	PAI: 3
+	PAI: 4
+	PAI: 5
+	PAI: 6
+	PAI: 7
+	PAI: 8
+	PAI: 9
+	PAI: 10
+	PAI: 11
+	PAI: 12
+	PAI: 13
+	PAI: 14
+	PAI: 15
+	PAI: 16
+	PAI: 17
+	PAI: 18
+	PAI: 19
+	PAI: 20
+	PAI: 21
+	PAI: 22
+	PAI: 23
+	PAI: 24
+	PAI: 25
+	PAI: 26
+	PAI: 27
+	PAI: 28
+	PAI: 29
+	PAI: 30
+	PAI: 31
+	PAI: 32
+	PAI: 33
+	PAI: 34
+	PAI: 35
+	PAI: 36
+	PAI: 37
+	PAI: 38
+	PAI: 39
+	PAI: 40
+	PAI: 41
+	PAI: 42
+	PAI: 43
+	PAI: 44
+	PAI: 45
+	PAI: 46
+	PAI: 47
+	PAI: 48
+	PAI: 49
+	PAI: 50
+
+	esperando o filho terminar
+
+		FILHO: 1
+		FILHO: 3
+		FILHO: 5
+		FILHO: 7
+		FILHO: 9
+		FILHO: 11
+		FILHO: 13
+		FILHO: 15
+		FILHO: 17
+		FILHO: 19
+		FILHO: 21
+		FILHO: 23
+		FILHO: 25
+		FILHO: 27
+		FILHO: 29
+		FILHO: 31
+		FILHO: 33
+		FILHO: 35
+		FILHO: 37
+		FILHO: 39
+		FILHO: 41
+		FILHO: 43
+		FILHO: 45
+		FILHO: 47
+		FILHO: 49
+		FILHO: 51
+		FILHO: 53
+		FILHO: 55
+		FILHO: 57
+		FILHO: 59
+		FILHO: 61
+		FILHO: 63
+		FILHO: 65
+		FILHO: 67
+		FILHO: 69
+		FILHO: 71
+		FILHO: 73
+		FILHO: 75
+		FILHO: 77
+		FILHO: 79
+		FILHO: 81
+		FILHO: 83
+		FILHO: 85
+		FILHO: 87
+		FILHO: 89
+		FILHO: 91
+		FILHO: 93
+		FILHO: 95
+		FILHO: 97
+		FILHO: 99
+	filho terminou. terminando...
+	
+ANÁLISE: 
+
+	Foram criados 2 processos rodando em paralelo. O processo filho é uma cópia idêntica do processo pai, e eles não tem compartilhamento de memória entre si. Portanto, ambos começam com var=1, e fazem as modificações com esse valor de base. O processo filho não começa as contas com var=50, como era esperado ao ler a questão.
+	Em alguns casos, o processo filho começaca a imprimir antes do processo pai acabar suas impressões, acredito que devido a liberação de buffer.
+	
+
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+
+
+QUESTÃO 3: 
+
+ENUNCIADO: 
+
+		Faça o mesmo problema do item 2, agora com o pai gerando o filho e o filho gerando
+	um filho (portanto o neto do processo pai). Este neto adiciona 3 à variável em um
+	loop de 1 a 150. Há concorrência? O que se pode dizer com relação à variável
+	inicializada? Justifique os resultados obtidos.
+
+
+CÓDIGO FONTE:
+
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+
+
+	int main(){
+
+		int var = 1;
+		int status;
+		int pid1, pid2;
+	
+		if ((pid1 = fork()) != 0){ //pai
+		
+			while (var <= 50){
+		
+				printf ("PAI: %d\n", var); fflush(stdout);
+				var++;
+			}
+		
+			printf("\n");
+		
+			printf("pai diz: esperando o filho terminar\n"); fflush(stdout);
+		
+			printf("\n\n");
+		
+			waitpid(pid1, &status, 0);
+		
+			printf("pai diz: filho terminou. terminando...\n"); fflush(stdout);
+		}
+	
+		else{
+		
+			if ((pid2 = fork()) != 0){ // filho
+		
+				while (var <= 100){
+		
+					printf ("\tFILHO: %d\n", var); fflush(stdout);
+					var += 2;
+				}
+			
+				printf("\tfilho diz: esperando o neto terminar\n"); fflush(stdout);
+				waitpid(pid2, &status, 0);
+				printf("\tfilho diz: neto terminou. terminando...\n"); fflush(stdout);
+			
+			
+			}
+			else{ // neto
+		
+				while (var <= 150){
+		
+					printf ("\t\tNETO: %d\n", var); fflush(stdout);
+					var += 3;
+				}	
+				printf("\t\tneto diz: neto terminando\n"); fflush(stdout);
+			}
+
+		}
+	}
+
+
+RESULTADO: 
+
+	PAI: 1
+	PAI: 2
+	PAI: 3
+	PAI: 4
+	PAI: 5
+	PAI: 6
+	PAI: 7
+	PAI: 8
+	PAI: 9
+	PAI: 10
+	PAI: 11
+	PAI: 12
+	PAI: 13
+	PAI: 14
+	PAI: 15
+	PAI: 16
+	PAI: 17
+	PAI: 18
+	PAI: 19
+	PAI: 20
+	PAI: 21
+	PAI: 22
+	PAI: 23
+	PAI: 24
+	PAI: 25
+	PAI: 26
+	PAI: 27
+	PAI: 28
+	PAI: 29
+	PAI: 30
+	PAI: 31
+	PAI: 32
+	PAI: 33
+	PAI: 34
+	PAI: 35
+	PAI: 36
+	PAI: 37
+	PAI: 38
+	PAI: 39
+	PAI: 40
+	PAI: 41
+	PAI: 42
+	PAI: 43
+	PAI: 44
+	PAI: 45
+	PAI: 46
+	PAI: 47
+	PAI: 48
+	PAI: 49
+	PAI: 50
+
+	pai diz: esperando o filho terminar
+
+
+		FILHO: 1
+		FILHO: 3
+		FILHO: 5
+		FILHO: 7
+		FILHO: 9
+		FILHO: 11
+		FILHO: 13
+		FILHO: 15
+		FILHO: 17
+		FILHO: 19
+		FILHO: 21
+		FILHO: 23
+		FILHO: 25
+		FILHO: 27
+		FILHO: 29
+		FILHO: 31
+		FILHO: 33
+		FILHO: 35
+		FILHO: 37
+		FILHO: 39
+		FILHO: 41
+		FILHO: 43
+		FILHO: 45
+		FILHO: 47
+		FILHO: 49
+		FILHO: 51
+		FILHO: 53
+		FILHO: 55
+		FILHO: 57
+		FILHO: 59
+		FILHO: 61
+		FILHO: 63
+		FILHO: 65
+		FILHO: 67
+		FILHO: 69
+		FILHO: 71
+		FILHO: 73
+		FILHO: 75
+		FILHO: 77
+		FILHO: 79
+		FILHO: 81
+		FILHO: 83
+		FILHO: 85
+		FILHO: 87
+		FILHO: 89
+		FILHO: 91
+		FILHO: 93
+		FILHO: 95
+		FILHO: 97
+		FILHO: 99
+		filho diz: esperando o neto terminar
+			NETO: 1
+			NETO: 4
+			NETO: 7
+			NETO: 10
+			NETO: 13
+			NETO: 16
+			NETO: 19
+			NETO: 22
+			NETO: 25
+			NETO: 28
+			NETO: 31
+			NETO: 34
+			NETO: 37
+			NETO: 40
+			NETO: 43
+			NETO: 46
+			NETO: 49
+			NETO: 52
+			NETO: 55
+			NETO: 58
+			NETO: 61
+			NETO: 64
+			NETO: 67
+			NETO: 70
+			NETO: 73
+			NETO: 76
+			NETO: 79
+			NETO: 82
+			NETO: 85
+			NETO: 88
+			NETO: 91
+			NETO: 94
+			NETO: 97
+			NETO: 100
+			NETO: 103
+			NETO: 106
+			NETO: 109
+			NETO: 112
+			NETO: 115
+			NETO: 118
+			NETO: 121
+			NETO: 124
+			NETO: 127
+			NETO: 130
+			NETO: 133
+			NETO: 136
+			NETO: 139
+			NETO: 142
+			NETO: 145
+			NETO: 148
+			neto diz: neto terminando
+		filho diz: neto terminou. terminando...
+	pai diz: filho terminou. terminando...
+
+	
+ANÁLISE: 
+	
+	Assim como no exercício dois, os processos não tem comunicação de memória. O filho recebe var = 1 da cópia do pai, e o neto também quando o fork é feito novamente. Há concorrência, pois os processos estão rodando em paralelo. Como eu utilizei fflush(stdou), não foi possível ver a concorrência, pois os processos conseguiram acabar antes de sua fatia no escalonamento. Mas, se elevarmos o numero limite da variável, é possível ver um processo indo na frente do outro, misturando as saídas.
+
+
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+
+
+QUESTÃO DESAFIO: 
+
+ENUNCIADO: 
+
+		Faça o mesmo problema do item 3, agora com o pai gerando 2 filhos
+	(portanto no mesmo nível). Faça um resumo sobre as diferenças verificadas na
+	execução dos programas dos itens 3 e 4.
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <sys/wait.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+
+
+	int main(){
+
+		int var = 1;
+		int status;
+		int pid1, pid2;
+		
+		if ((pid1 = fork()) != 0){ /*pai*/
+
+			if((pid2=fork()) != 0){
+
+				//PAI
+
+				while (var != 150){
+					printf( "PAI: %d\n", var); fflush(stdout);
+					var++;
+				}
+
+				waitpid (-1, &status, 0);
+			}
+
+			else { //FILHO 1
+
+				while (var != 150){
+					printf( "\tFILHO 1: %d\n", var); fflush(stdout);
+					var++;
+				}
+
+			}
+		}
+
+		else{ /*filho 2*/
+
+			while (var != 150){
+				printf( "\t\tFILHO 2: %d\n", var); fflush(stdout);
+				var++;
+			}
+		}
+		return 0;
+	}
+
+
+
+RESULTADO: 
+
+	PAI: 1
+	PAI: 2
+	PAI: 3
+	PAI: 4
+	PAI: 5
+	PAI: 6
+	PAI: 7
+	PAI: 8
+	PAI: 9
+	PAI: 10
+	PAI: 11
+	PAI: 12
+	PAI: 13
+	PAI: 14
+	PAI: 15
+	PAI: 16
+	PAI: 17
+	PAI: 18
+	PAI: 19
+			FILHO 2: 1
+		FILHO 1: 1
+	PAI: 20
+			FILHO 2: 2
+		FILHO 1: 2
+	PAI: 21
+			FILHO 2: 3
+		FILHO 1: 3
+	PAI: 22
+			FILHO 2: 4
+		FILHO 1: 4
+	PAI: 23
+			FILHO 2: 5
+		FILHO 1: 5
+	PAI: 24
+			FILHO 2: 6
+		FILHO 1: 6
+			FILHO 2: 7
+	PAI: 25
+		FILHO 1: 7
+			FILHO 2: 8
+	PAI: 26
+		FILHO 1: 8
+			FILHO 2: 9
+	PAI: 27
+		FILHO 1: 9
+	PAI: 28
+			FILHO 2: 10
+		FILHO 1: 10
+	PAI: 29
+			FILHO 2: 11
+		FILHO 1: 11
+	PAI: 30
+			FILHO 2: 12
+		FILHO 1: 12
+	PAI: 31
+			FILHO 2: 13
+		FILHO 1: 13
+	PAI: 32
+		FILHO 1: 14
+			FILHO 2: 14
+	PAI: 33
+		FILHO 1: 15
+	PAI: 34
+			FILHO 2: 15
+		FILHO 1: 16
+	PAI: 35
+			FILHO 2: 16
+		FILHO 1: 17
+	PAI: 36
+			FILHO 2: 17
+		FILHO 1: 18
+	PAI: 37
+			FILHO 2: 18
+		FILHO 1: 19
+	PAI: 38
+			FILHO 2: 19
+		FILHO 1: 20
+	PAI: 39
+			FILHO 2: 20
+		FILHO 1: 21
+	PAI: 40
+			FILHO 2: 21
+		FILHO 1: 22
+	PAI: 41
+			FILHO 2: 22
+		FILHO 1: 23
+	PAI: 42
+			FILHO 2: 23
+		FILHO 1: 24
+	PAI: 43
+			FILHO 2: 24
+		FILHO 1: 25
+			FILHO 2: 25
+	PAI: 44
+		FILHO 1: 26
+	PAI: 45
+			FILHO 2: 26
+		FILHO 1: 27
+	PAI: 46
+			FILHO 2: 27
+	PAI: 47
+		FILHO 1: 28
+			FILHO 2: 28
+	PAI: 48
+			FILHO 2: 29
+		FILHO 1: 29
+	PAI: 49
+			FILHO 2: 30
+		FILHO 1: 30
+			FILHO 2: 31
+	PAI: 50
+		FILHO 1: 31
+			FILHO 2: 32
+	PAI: 51
+			FILHO 2: 33
+		FILHO 1: 32
+	PAI: 52
+			FILHO 2: 34
+		FILHO 1: 33
+	PAI: 53
+			FILHO 2: 35
+		FILHO 1: 34
+			FILHO 2: 36
+	PAI: 54
+		FILHO 1: 35
+			FILHO 2: 37
+	PAI: 55
+		FILHO 1: 36
+			FILHO 2: 38
+	PAI: 56
+		FILHO 1: 37
+			FILHO 2: 39
+	PAI: 57
+		FILHO 1: 38
+			FILHO 2: 40
+	PAI: 58
+		FILHO 1: 39
+			FILHO 2: 41
+	PAI: 59
+		FILHO 1: 40
+			FILHO 2: 42
+	PAI: 60
+		FILHO 1: 41
+			FILHO 2: 43
+	PAI: 61
+		FILHO 1: 42
+			FILHO 2: 44
+	PAI: 62
+		FILHO 1: 43
+			FILHO 2: 45
+	PAI: 63
+		FILHO 1: 44
+			FILHO 2: 46
+	PAI: 64
+			FILHO 2: 47
+		FILHO 1: 45
+	PAI: 65
+			FILHO 2: 48
+		FILHO 1: 46
+	PAI: 66
+			FILHO 2: 49
+		FILHO 1: 47
+	PAI: 67
+			FILHO 2: 50
+		FILHO 1: 48
+	PAI: 68
+			FILHO 2: 51
+		FILHO 1: 49
+			FILHO 2: 52
+	PAI: 69
+		FILHO 1: 50
+			FILHO 2: 53
+	PAI: 70
+		FILHO 1: 51
+			FILHO 2: 54
+	PAI: 71
+		FILHO 1: 52
+			FILHO 2: 55
+	PAI: 72
+		FILHO 1: 53
+			FILHO 2: 56
+	PAI: 73
+		FILHO 1: 54
+			FILHO 2: 57
+	PAI: 74
+		FILHO 1: 55
+			FILHO 2: 58
+	PAI: 75
+		FILHO 1: 56
+			FILHO 2: 59
+	PAI: 76
+		FILHO 1: 57
+			FILHO 2: 60
+	PAI: 77
+		FILHO 1: 58
+			FILHO 2: 61
+	PAI: 78
+		FILHO 1: 59
+			FILHO 2: 62
+	PAI: 79
+		FILHO 1: 60
+			FILHO 2: 63
+	PAI: 80
+		FILHO 1: 61
+			FILHO 2: 64
+	PAI: 81
+			FILHO 2: 65
+		FILHO 1: 62
+	PAI: 82
+			FILHO 2: 66
+		FILHO 1: 63
+	PAI: 83
+			FILHO 2: 67
+		FILHO 1: 64
+			FILHO 2: 68
+	PAI: 84
+		FILHO 1: 65
+			FILHO 2: 69
+	PAI: 85
+		FILHO 1: 66
+			FILHO 2: 70
+	PAI: 86
+			FILHO 2: 71
+		FILHO 1: 67
+	PAI: 87
+			FILHO 2: 72
+		FILHO 1: 68
+			FILHO 2: 73
+	PAI: 88
+		FILHO 1: 69
+			FILHO 2: 74
+	PAI: 89
+		FILHO 1: 70
+			FILHO 2: 75
+	PAI: 90
+			FILHO 2: 76
+		FILHO 1: 71
+			FILHO 2: 77
+	PAI: 91
+		FILHO 1: 72
+			FILHO 2: 78
+	PAI: 92
+		FILHO 1: 73
+			FILHO 2: 79
+	PAI: 93
+		FILHO 1: 74
+	PAI: 94
+			FILHO 2: 80
+		FILHO 1: 75
+	PAI: 95
+			FILHO 2: 81
+		FILHO 1: 76
+	PAI: 96
+			FILHO 2: 82
+		FILHO 1: 77
+			FILHO 2: 83
+	PAI: 97
+		FILHO 1: 78
+	PAI: 98
+			FILHO 2: 84
+		FILHO 1: 79
+	PAI: 99
+			FILHO 2: 85
+		FILHO 1: 80
+			FILHO 2: 86
+	PAI: 100
+		FILHO 1: 81
+			FILHO 2: 87
+	PAI: 101
+			FILHO 2: 88
+		FILHO 1: 82
+	PAI: 102
+		FILHO 1: 83
+	PAI: 103
+			FILHO 2: 89
+		FILHO 1: 84
+	PAI: 104
+		FILHO 1: 85
+	PAI: 105
+			FILHO 2: 90
+		FILHO 1: 86
+	PAI: 106
+			FILHO 2: 91
+		FILHO 1: 87
+	PAI: 107
+			FILHO 2: 92
+		FILHO 1: 88
+			FILHO 2: 93
+	PAI: 108
+		FILHO 1: 89
+			FILHO 2: 94
+	PAI: 109
+		FILHO 1: 90
+			FILHO 2: 95
+	PAI: 110
+		FILHO 1: 91
+			FILHO 2: 96
+	PAI: 111
+			FILHO 2: 97
+		FILHO 1: 92
+	PAI: 112
+			FILHO 2: 98
+		FILHO 1: 93
+	PAI: 113
+			FILHO 2: 99
+		FILHO 1: 94
+	PAI: 114
+			FILHO 2: 100
+		FILHO 1: 95
+	PAI: 115
+			FILHO 2: 101
+		FILHO 1: 96
+	PAI: 116
+			FILHO 2: 102
+		FILHO 1: 97
+	PAI: 117
+			FILHO 2: 103
+		FILHO 1: 98
+	PAI: 118
+			FILHO 2: 104
+		FILHO 1: 99
+	PAI: 119
+			FILHO 2: 105
+		FILHO 1: 100
+	PAI: 120
+		FILHO 1: 101
+			FILHO 2: 106
+	PAI: 121
+		FILHO 1: 102
+			FILHO 2: 107
+	PAI: 122
+		FILHO 1: 103
+	PAI: 123
+			FILHO 2: 108
+		FILHO 1: 104
+	PAI: 124
+			FILHO 2: 109
+		FILHO 1: 105
+			FILHO 2: 110
+	PAI: 125
+		FILHO 1: 106
+			FILHO 2: 111
+	PAI: 126
+		FILHO 1: 107
+	PAI: 127
+			FILHO 2: 112
+		FILHO 1: 108
+	PAI: 128
+			FILHO 2: 113
+		FILHO 1: 109
+	PAI: 129
+			FILHO 2: 114
+		FILHO 1: 110
+			FILHO 2: 115
+	PAI: 130
+		FILHO 1: 111
+			FILHO 2: 116
+	PAI: 131
+			FILHO 2: 117
+		FILHO 1: 112
+	PAI: 132
+			FILHO 2: 118
+		FILHO 1: 113
+	PAI: 133
+			FILHO 2: 119
+		FILHO 1: 114
+	PAI: 134
+		FILHO 1: 115
+			FILHO 2: 120
+	PAI: 135
+		FILHO 1: 116
+	PAI: 136
+			FILHO 2: 121
+		FILHO 1: 117
+	PAI: 137
+			FILHO 2: 122
+		FILHO 1: 118
+	PAI: 138
+			FILHO 2: 123
+		FILHO 1: 119
+			FILHO 2: 124
+	PAI: 139
+		FILHO 1: 120
+			FILHO 2: 125
+	PAI: 140
+		FILHO 1: 121
+			FILHO 2: 126
+	PAI: 141
+		FILHO 1: 122
+			FILHO 2: 127
+	PAI: 142
+		FILHO 1: 123
+	PAI: 143
+			FILHO 2: 128
+		FILHO 1: 124
+	PAI: 144
+			FILHO 2: 129
+	PAI: 145
+		FILHO 1: 125
+			FILHO 2: 130
+	PAI: 146
+		FILHO 1: 126
+			FILHO 2: 131
+	PAI: 147
+		FILHO 1: 127
+	PAI: 148
+		FILHO 1: 128
+			FILHO 2: 132
+	PAI: 149
+		FILHO 1: 129
+			FILHO 2: 133
+		FILHO 1: 130
+			FILHO 2: 134
+		FILHO 1: 131
+			FILHO 2: 135
+		FILHO 1: 132
+			FILHO 2: 136
+		FILHO 1: 133
+			FILHO 2: 137
+		FILHO 1: 134
+			FILHO 2: 138
+		FILHO 1: 135
+			FILHO 2: 139
+		FILHO 1: 136
+			FILHO 2: 140
+		FILHO 1: 137
+			FILHO 2: 141
+		FILHO 1: 138
+			FILHO 2: 142
+		FILHO 1: 139
+			FILHO 2: 143
+		FILHO 1: 140
+			FILHO 2: 144
+		FILHO 1: 141
+			FILHO 2: 145
+		FILHO 1: 142
+			FILHO 2: 146
+		FILHO 1: 143
+			FILHO 2: 147
+		FILHO 1: 144
+			FILHO 2: 148
+		FILHO 1: 145
+			FILHO 2: 149
+		FILHO 1: 146
+		FILHO 1: 147
+		FILHO 1: 148
+		FILHO 1: 149
+
+	
+ANÁLISE: 
+
+	No item 3, eu percebi que, aparentemente, há um tempo maior para cada processo (pois eles imprimem mais coisas em seguida). No item 4 (desafio), eu percebi que os processos se intercalam na maioria das vezes. Acho que seja porque os dois filhos recebem fatias iguais de tempo, ou são interrompidos quando imprimem na tela (não tenho certeza, inclusive perguntarei na aula). 
+
+	Os processos, no item 3, estão assim:
+
+		PAI 
+			\
+			 \
+			 FILHO
+			 	\
+			 	 \
+			 	 NETO
+
+	Enquanto que, no item 4, estão assim:
+
+					PAI
+				  /		\
+				 /		 \
+			FILHO 1		FILHO 2
+
+	Ainda não vimos a parte de escalonamento, mas acredito que seja a saída em 4 é intercalada pois os processos filho estão no mesmo nível.
+	
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+

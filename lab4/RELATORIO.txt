@@ -1,0 +1,189 @@
+INF1019 - SISTEMAS DE COMPUTAÇÃO 
+
+
+PROFESSOR: LUIZ FERNANDO BESSA SEIBEL
+ALUNO: CONRADO MACHADO COSTA - 1710234
+
+
+
+RELATÓRIO - LABORATÓRIO 4 - PIPES
+
+QUESTÃO 1: 
+
+ENUNCIADO: 
+
+		Faça um programa para criar dois processos
+	que se comunicam via pipe. O Pai lê do pipe
+	enquanto o filho escreve no pipe. Exiba o resultado
+	do que foi escrito e lido.
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <stdio.h>
+	#include <sys/wait.h>
+	#include <string.h>
+
+
+
+	int main(){
+
+		int fd[2];
+		int pid;
+		int status;
+
+		if (pipe(fd) < 0){
+			printf("Erro ao criar pipe.\n");
+			return -1;
+		}
+
+
+
+		if ( (pid = fork()) == 0){//filho
+			close(fd[0]);
+			char texto[] = "Oi, eu sou o filho";
+
+			write(fd[1], texto, sizeof(texto) + 1);
+
+			sleep(2);
+
+			strcpy(texto,  "outra mensagem...");
+			write(fd[1], texto, sizeof(texto) + 1);
+
+
+			close(fd[1]);
+
+		}
+		else{ //pai
+			char texto[256];
+			close(fd[1]);
+			//waitpid(-1, &status, 0);
+
+
+			read(fd[0], texto, sizeof(texto) + 1);
+
+			printf("Pai lendo a mensagem: '%s'\n", texto);
+
+			//waitpid(-1, &status, 0);
+			//sleep(2);
+
+			read(fd[0], texto, sizeof(texto) + 1);
+			printf("Pai lendo a mensagem: '%s'\n", texto);
+
+			waitpid(-1, &status, 0);
+
+			close(fd[0]);
+
+		}
+	}
+
+
+RESULTADO: 
+
+	Pai lendo a mensagem: 'Oi, eu sou o filho'
+	[2 segundos depois]
+	Pai lendo a mensagem: 'outra mensagem...'
+
+
+	
+ANÁLISE: 
+
+	Foi criada uma pipe na qual o filho escreve uma mensagem. Como a sincronia da pipe é automática, o pai lê a mensagem só depois que o filho escreve. Depois de um sleep de 2 segundos, o filho escreve outra mensagem novamente na pipe. O pai, novamente, lê a mensagem. Não foi necessário dizer pro pai dar sleep(2) para depois ler a segunda mensagem: ele só lê novamente quando ocorre uma mudança na pipe.
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x
+
+QUESTÃO 2: 
+
+ENUNCIADO: 
+
+	2) Faça um programa para redirecionar a entrada
+	e a saída, lendo os dados de um arquivo e
+	gerando a saída em outro.
+
+
+CÓDIGO FONTE:
+
+	#include <unistd.h>
+	#include <stdio.h>
+	#include <fcntl.h>
+
+
+	int main(){
+
+		int fd1;
+		int fd2;
+
+		int retorno1, retorno2;
+
+		if ( (fd1 = open("entrada.txt", O_RDWR | O_CREAT | O_TRUNC, 0222)) == -1){
+			printf("Erro ao abrir pipe\n");
+			return -1;
+		}
+		
+		if ( (fd2 = open("saida.txt", O_RDWR | O_CREAT | O_TRUNC, 0666)) == -1){
+			printf("Erro ao abrir pipe\n");
+			return -1;
+		}
+
+		
+		close(0);
+		if ( (retorno1 = dup(fd1)) == -1) {
+			perror("Error open()");
+			return -1;
+		}
+
+		if ( (retorno2 = dup2(fd2,1)) == -1) {
+			perror("Error open()");
+			return -1;
+		}
+
+		int a; int b;
+		//scanf("%s", s);
+		scanf("%d", &a);
+		scanf("%d", &b);
+
+		//printf("%s", s);
+		printf("Soma: %i\n", a + b);
+		printf("Produto: %i\n", a * b);
+
+	}
+
+
+RESULTADO: 
+	
+	antes de rodar:
+
+	[entrada.txt]:
+		2 3
+
+
+
+	[saida.txt]:
+		--vazio
+
+
+	depois de rodar:
+
+
+	[entrada.txt]:
+		--vazio
+	
+
+
+
+	[saida.txt]:
+		Soma: -149245850
+		Produto: -2009406080
+
+
+
+
+
+
+	
+ANÁLISE: 
+
+	Não consegui fazer o programa redirecionar a saida, apenas a entrada. Fiz o dup para o canal 0, mas não deu certo. Até enviei e-mail com a dúvida, porém não obtive resposta... Não sei o que estou fazendo de errado. O Scanf não pega os dados.
+
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x

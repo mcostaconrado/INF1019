@@ -11,7 +11,9 @@ USO:
 É necessario compilar os programas e o interpretador:
 
 g++ -o interpretador interpretador.c
+
 g++ -o prog<1..n> prog<1..n>.c
+
 g++ -o escalonador escalonador.c
 
 Execução: ./escalonador (este já dispara a execução do interpretador e dos programas - já compilados).
